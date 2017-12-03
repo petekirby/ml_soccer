@@ -12,7 +12,6 @@ class Player:
         self.x = x
         self.y = y
         self.has_ball = has_ball
-        self.action = 'ST'
 
     def update_state(self, x, y, has_ball):
         self.x = x
@@ -159,7 +158,7 @@ class World:
 
                 collision = True
 
-                if new_pos.has_ball and other_p.action == 'ST':
+                if new_pos.has_ball:
                     other_p.update_ball_pos(True)
                     moving_player.update_ball_pos(False)
 
@@ -238,9 +237,6 @@ class World:
 
         r = None
         goal = False
-
-        for k, v in a.items():
-            self.players[k].action = self.actions[v]
 
         player_order = list(a)
         np.random.shuffle(player_order)
