@@ -12,6 +12,7 @@ class Player:
         self.x = x
         self.y = y
         self.has_ball = has_ball
+        self.action = 'ST'
 
     def update_state(self, x, y, has_ball):
         self.x = x
@@ -54,7 +55,7 @@ class World:
 
         grid = [['**'] * (self.cols + 2)]
 
-        for i in xrange(self.rows):
+        for i in range(self.rows):
             grid.append(['**', 'gA'] + ['  '] * (self.cols - 2) + ['gB', '**'])
 
         grid.append(['**'] * (self.cols + 2))
@@ -127,9 +128,9 @@ class World:
                 self.grid[player.y + 1][player.x + 1] = cell
 
         for r in self.grid:
-            print ' | '.join(r)
+            print(' | '.join(r))
 
-        print ''
+        print('')
 
     def check_collision(self, new_pos, moving_player, other_players):
         """ Method that verifies if there is a collision between two players.
@@ -154,16 +155,16 @@ class World:
             if new_pos.x == other_p.x and new_pos.y == other_p.y:
 
                 if self.commentator:
-                    print '{} collided with {}'.format(moving_player.p_id, other_p.p_id)
+                    print('{} collided with {}'.format(moving_player.p_id, other_p.p_id))
 
                 collision = True
 
-                if new_pos.has_ball:
+                if new_pos.has_ball and other_p.action == 'ST':
                     other_p.update_ball_pos(True)
                     moving_player.update_ball_pos(False)
 
                     if self.commentator:
-                        print "{} steals from {}".format(other_p.p_id, moving_player.p_id)
+                        print("{} steals from {}".format(other_p.p_id, moving_player.p_id))
 
         return collision
 
@@ -190,7 +191,7 @@ class World:
         if moving_player.x == self.goals[moving_player.p_id] and moving_player.has_ball:
 
             if self.commentator:
-                print "{} scored a goal!!".format(moving_player.p_id)
+                print("{} scored a goal!!".format(moving_player.p_id))
 
             goal = True
             r[moving_player.p_id] = self.goal_r[moving_player.p_id]
@@ -205,7 +206,7 @@ class World:
             if sum(other_goal.values()) > 0:
 
                 if self.commentator:
-                    print "{} scored an own goal!!".format(moving_player.p_id)
+                    print("{} scored an own goal!!".format(moving_player.p_id))
 
                 goal = True
 
@@ -238,7 +239,10 @@ class World:
         r = None
         goal = False
 
-        player_order = a.keys()
+        for k, v in a.items():
+            self.players[k].action = self.actions[v]
+
+        player_order = list(a)
         np.random.shuffle(player_order)
         new_pos = Player(0, 0, False)
 
@@ -276,10 +280,86 @@ class World:
                 break
 
         if self.commentator:
-            print 'Player Order: {}'.format(player_order)
-            print 'Actions: {}'.format(a)
-            print 'A location: ({}, {})'.format(self.players['A'].x, self.players['A'].y)
-            print 'B location: ({}, {})'.format(self.players['B'].x, self.players['B'].y)
-            print ""
+            print('Player Order: {}'.format(player_order))
+            print('Actions: {}'.format(a))
+            print('A location: ({}, {})'.format(self.players['A'].x, self.players['A'].y))
+            print('B location: ({}, {})'.format(self.players['B'].x, self.players['B'].y))
+            print("")
 
         return self.map_player_state(), r, goal
+
+class GreenwaldHallWorld:
+    def __init__(self, is_commentator = False):
+        rows = 2
+        cols = 4
+        num_cells = rows * cols
+        self.state_dict, self.reverse_state_list = self.create_state_comb(range(num_cells), range(num_cells))
+        self.num_states = len(self.reverse_state_list)
+        self.num_actions = 5
+        self.player_a = Player(x=2, y=0, has_ball=False, p_id='A')
+        self.player_b = Player(x=1, y=0, has_ball=True, p_id='B')
+        self.world = World()
+        self.world.set_world_size(x=cols, y=rows)
+        self.world.set_goals(100, 0, 'A')
+        self.world.set_goals(100, 3, 'B')
+        self.reset()
+        if is_commentator:
+            self.world.set_commentator_on()
+
+    def reset(self):
+        self.world.place_player(self.player_a, player_id='A')
+        self.world.place_player(self.player_b, player_id='B')
+        return self.state_dict[self.world.map_player_state()]
+
+    def move(self, actions):
+        a1, a2 = actions[0], actions[1]
+        actions_dict = {'A': a1, 'B': a2}
+        next_state_string, rewards_dict, goal = self.world.move(actions_dict)
+        s_next = self.state_dict[next_state_string]
+        rewards = [rewards_dict['A'], rewards_dict['B']]
+        return s_next, rewards, goal
+
+    def print_status(self, goal, new_state, rewards):
+        print("")
+        print("Players state label: {}".format(self.reverse_state_list[new_state]))
+        print("Players state in the numerical table: {}".format(new_state))
+        print("Rewards for each player after move: {}".format(rewards))
+        print("Goal status: {}".format(goal))
+        print("-" * 20 + "\n")
+
+    def plot_grid(self):
+        self.world.plot_grid()
+
+    def create_state_comb(self, p_a_states, p_b_states):
+        """ Creates a dictionary that represents the state space possible combinations.
+
+        Args:
+            p_a_states (list): List with the numerical state labels for player A
+            p_b_states (list): List with the numerical state labels for player B
+
+        Returns:
+            dict: Dictionary with the state space representation. Each element is labeled using the
+                format [XYZ] where:
+                    - X: shows who has the ball, either A or B.
+                    - Y: state where player A is.
+                    - Z: state where player B is.
+
+                The key values hold a numeric value using the counter id_q.
+
+        """
+
+        states = {}
+        reverse_states = []
+        ball_pos = ['A', 'B']
+        id_q = 0
+
+        for b in ball_pos:
+            for p_a in p_a_states:
+                for p_b in p_b_states:
+                    if p_a != p_b:
+                        state_string = b + str(p_a) + str(p_b)
+                        states[state_string] = id_q
+                        reverse_states.append(state_string)
+                        id_q += 1
+
+        return states, reverse_states
