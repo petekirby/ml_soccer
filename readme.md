@@ -5,3 +5,4 @@ This package contains a environment simulator for the Soccer toy game as shown i
 * Michael L Littman. "Friend-or-foe Q-learning in general-sum Games" 2001
 * Amy Greenwald and Keith Hall. "Correlated Q-Learning" 2003
 
+USE AT YOUR OWN RISK. NO WARRANTY EXPRESSED OR IMPLIED.
